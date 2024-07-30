@@ -1,6 +1,8 @@
-
+val koin_ktor: String by project
 val kotlin_version: String by project
 val logback_version: String by project
+val ktor_version: String by project
+
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -22,10 +24,35 @@ repositories {
 }
 
 dependencies {
+    implementation("io.ktor:ktor-server-content-negotiation-jvm")
     implementation("io.ktor:ktor-server-core-jvm")
+    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
+    implementation("io.ktor:ktor-server-call-logging-jvm")
     implementation("io.ktor:ktor-server-netty-jvm")
     implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("io.ktor:ktor-server-config-yaml")
-    testImplementation("io.ktor:ktor-server-test-host-jvm")
+    implementation("io.ktor:ktor-server-config-yaml:2.3.11")
+
+    implementation("io.ktor:ktor-client-core:2.3.5")
+    implementation("io.ktor:ktor-client-cio:2.3.2")
+    implementation("io.ktor:ktor-client-serialization:2.3.2")
+    implementation("io.ktor:ktor-client-cio-jvm:2.3.2")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.2")
+    implementation("io.ktor:ktor-serialization-gson:2.3.2")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.2")
+    implementation("com.google.code.gson:gson:2.8.9")
+    implementation("io.ktor:ktor-client-logging:2.3.2")
+    implementation("ch.qos.logback:logback-classic:1.2.11")
+    implementation("io.ktor:ktor-client-serialization:2.3.2")
+    implementation("io.ktor:ktor-client-logging-jvm:2.3.2")
+
+    implementation("io.insert-koin:koin-ktor:$koin_ktor")
+    implementation("io.insert-koin:koin-logger-slf4j:$koin_ktor")
+
+    implementation("io.ktor:ktor-server-swagger:$ktor_version")
+
+    implementation("io.ktor:ktor-server-auth:$ktor_version")
+
+    testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
+
