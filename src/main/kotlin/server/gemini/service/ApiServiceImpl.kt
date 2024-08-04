@@ -11,12 +11,17 @@ import server.gemini.models.UserRegistrationResponse
 import server.gemini.models.addFirestore.AddFireStoreRequest
 import server.gemini.models.addFirestore.FireStoreResponse
 import server.gemini.models.createNote.CreateNoteRequest
+import server.gemini.models.queryVectors.QueryVectorsRequest
+import server.gemini.models.searchNotes.SearchNotesResponse
+import server.gemini.models.searchNotes.SearchRequest
 import server.gemini.models.signInResponse.SignInFirebaseResponse
 import server.gemini.models.signUpFirebase.*
 import server.gemini.models.upsert.Metadata
 import server.gemini.models.upsert.UpsertVectorsRequest
 import server.gemini.models.upsert.Vector
 import server.gemini.utils.ApiKeyNotFoundException
+import server.gemini.utils.Paragraph
+import server.gemini.utils.toCombinedString
 import java.util.*
 
 class ApiServiceImpl(private val client: HttpClient) : ApiService {
@@ -276,5 +281,59 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
             ),
             HttpStatusCode.OK
         )
+    }
+
+    override suspend fun searchNotes(searchRequest: SearchRequest): Pair<SearchNotesResponse, HttpStatusCode> {
+        try {
+            val vector = createNotes.createVectors(
+                listOf(
+                    Paragraph(
+                        text = searchRequest.content ?: ""
+                    )
+                )
+            )
+            val justVectors = vector
+                .mapNotNull { it?.values }
+                .flatten()
+
+            val queryNotes = createNotes.queryVectorsRequest(
+                QueryVectorsRequest(
+                    vector = justVectors,
+                    includeMetadata = true,
+                    topK = 3,
+                    includeValues = true,
+                )
+            )
+
+            val content = queryNotes.matches
+                ?.map { it?.metadata?.genre }
+                .toCombinedString()
+
+            val askGemini = createNotes.askGemini(
+                question = searchRequest.content ?: "",
+                content = content
+            )
+            if (askGemini.response != null) {
+                return Pair(
+                    askGemini,
+                    HttpStatusCode.OK
+                )
+            } else {
+                return Pair(
+                    SearchNotesResponse(
+                        response = "No Notes Found"
+                    ),
+                    HttpStatusCode.BadRequest
+                )
+            }
+        } catch (e: Exception) {
+            println("Error during searchNotes: $e")
+            return Pair(
+                SearchNotesResponse(
+                    response = "Something Went Wrong"
+                ),
+                HttpStatusCode.ServiceUnavailable
+            )
+        }
     }
 }

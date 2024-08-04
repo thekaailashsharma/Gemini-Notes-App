@@ -5,11 +5,18 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import server.gemini.models.askGemini.AskGeminiRequest
+import server.gemini.models.askGemini.AskGeminiResponse
+import server.gemini.models.askGemini.Prompt
 import server.gemini.models.createNote.CreateNoteRequest
 import server.gemini.models.createVectors.Content
 import server.gemini.models.createVectors.CreateVectorsRequest
 import server.gemini.models.createVectors.CreateVectorsResponse
 import server.gemini.models.createVectors.Part
+import server.gemini.models.queryVectors.QueryVectorsRequest
+import server.gemini.models.queryVectors.QueryVectorsResponse
+import server.gemini.models.searchNotes.SearchNotesResponse
+import server.gemini.models.searchNotes.SearchRequest
 import server.gemini.models.signUpFirebase.SignUpFirebaseError
 import server.gemini.models.upsert.Metadata
 import server.gemini.models.upsert.UpsertVectorsRequest
@@ -75,9 +82,6 @@ class CreateNotes(private val client: HttpClient) {
     }
 
     suspend fun upsertVectors(upsertVectorsRequests: List<UpsertVectorsRequest>): UpsertVectorsResponse {
-        val response = UpsertVectorsResponse(
-            upsertedCount = null
-        )
         var count = 0
         try {
             upsertVectorsRequests.forEach { upsertVectorsRequest ->
@@ -118,4 +122,86 @@ class CreateNotes(private val client: HttpClient) {
             )
         }
     }
+
+    suspend fun queryVectorsRequest(queryVectorsRequest: QueryVectorsRequest): QueryVectorsResponse {
+        try {
+            val queryVectorsUrl = "https://temporary-m7240u6.svc.aped-4627-b74a.pinecone.io/query"
+            val c = client.post {
+                url(queryVectorsUrl)
+                setBody(
+                    queryVectorsRequest
+                )
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Api-Key", "e88fe59a-4d45-4e71-a287-90a5088db545")
+                    append("X-Pinecone-API-Version", "2024-07")
+                    append("Accept", "*/*")
+                    append("content-Type", "application/json")
+                }
+            }
+            println("QueryResponse is ${c}")
+            if (c.status.isSuccess()) {
+                println("QueryResponse is inside")
+                return c.body<QueryVectorsResponse>()
+            } else {
+                println("QueryResponse is ouside")
+                return QueryVectorsResponse(
+                    results = null
+                )
+            }
+        } catch (e: Exception) {
+            println("QueryResponse is ${e.message}")
+            return QueryVectorsResponse(
+                results = null
+            )
+        }
+    }
+
+    suspend fun askGemini(question: String, content: String): SearchNotesResponse {
+        try {
+            val askGeminiUrl = "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:" +
+                    "generateText?key=AIzaSyA2AfZyW1X2QlkifMJMGRv2Mqc78RJpt30"
+
+            val createPrompt = "This is the question on a users note that they want to ask" +
+                    "The question is: $question. The content of the note is: $content. Now answer the question." +
+                    "nicely and in a way that is helpful to the user."
+
+            val c = client.post {
+                url(askGeminiUrl)
+                setBody(
+                    AskGeminiRequest(
+                        prompt = Prompt(
+                            text = createPrompt
+                        )
+                    )
+                )
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Accept", "*/*")
+                    append("Content-Type", "application/json")
+                }
+            }
+            println("AskGeminiResponse is ${c}")
+            if (c.status.isSuccess()) {
+                println("AskGeminiResponse is inside")
+                val response = c.body<AskGeminiResponse>().candidates?.get(0)?.output
+                return SearchNotesResponse(
+                    response = response,
+                    content = content,
+                    name = question
+                )
+            } else {
+                println("AskGeminiResponse is ouside")
+                return SearchNotesResponse(
+                    response = c.bodyAsText()
+                )
+            }
+        } catch (e: Exception) {
+            println("Error is ${e.message}")
+            return SearchNotesResponse(
+                response = e.message
+            )
+        }
+    }
+
 }
