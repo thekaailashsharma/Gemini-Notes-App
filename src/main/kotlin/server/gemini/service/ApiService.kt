@@ -8,7 +8,9 @@ import server.gemini.models.addFirestore.FireStoreResponse
 import io.ktor.http.*
 import server.gemini.models.UserLoginRequest
 import server.gemini.models.UserRegistrationRequest
+import server.gemini.models.UserRegistrationResponse
 import server.gemini.models.addFirestore.AddFireStoreRequest
+import server.gemini.models.createNote.CreateNoteRequest
 import server.gemini.models.signInResponse.SignInFirebaseResponse
 
 interface ApiService {
@@ -27,5 +29,7 @@ interface ApiService {
     ): Pair<FireStoreResponse, HttpStatusCode>
 
     suspend fun signInFirebase(request: UserLoginRequest): Pair<SignInFirebaseResponse, HttpStatusCode>
+
+    suspend fun createNote(request: CreateNoteRequest): Pair<UserRegistrationResponse, HttpStatusCode>
 
 }

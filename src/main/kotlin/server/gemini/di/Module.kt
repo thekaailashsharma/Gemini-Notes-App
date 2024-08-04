@@ -21,7 +21,9 @@ val httpClientModule = module {
                     explicitNulls = false
                 })
             }
-            install(Logging)
+            install(Logging) {
+                level = LogLevel.BODY
+            }
             install(HttpTimeout) {
                 requestTimeoutMillis = 1000000
             }

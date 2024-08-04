@@ -7,11 +7,17 @@ import io.ktor.client.request.headers
 import io.ktor.http.*
 import server.gemini.models.UserLoginRequest
 import server.gemini.models.UserRegistrationRequest
+import server.gemini.models.UserRegistrationResponse
 import server.gemini.models.addFirestore.AddFireStoreRequest
 import server.gemini.models.addFirestore.FireStoreResponse
+import server.gemini.models.createNote.CreateNoteRequest
 import server.gemini.models.signInResponse.SignInFirebaseResponse
 import server.gemini.models.signUpFirebase.*
+import server.gemini.models.upsert.Metadata
+import server.gemini.models.upsert.UpsertVectorsRequest
+import server.gemini.models.upsert.Vector
 import server.gemini.utils.ApiKeyNotFoundException
+import java.util.*
 
 class ApiServiceImpl(private val client: HttpClient) : ApiService {
     private val apiKey = System.getenv("apiKey") ?: throw ApiKeyNotFoundException(
@@ -22,6 +28,8 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         message = "Please Enter an ProjectId",
         errorCode = 400
     )
+
+    val createNotes = CreateNotes(client)
 
     override suspend fun ifEmailExists(email: String): Pair<Boolean, HttpStatusCode> {
         TODO("Not yet implemented")
@@ -248,5 +256,25 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
                 HttpStatusCode.ServiceUnavailable
             )
         }
+    }
+
+    override suspend fun createNote(request: CreateNoteRequest): Pair<UserRegistrationResponse, HttpStatusCode> {
+        val paragraphs = createNotes.createParagraphs(request.content ?: "")
+        val vectors = createNotes.createVectors(paragraphs)
+        val notes = createNotes.upsertVectors(
+            upsertVectorsRequests = vectors.map {
+                UpsertVectorsRequest(
+                    vectors = vectors
+                )
+            }
+        )
+        println("notes is $notes")
+        return Pair(
+            UserRegistrationResponse(
+                success = true,
+                message = "Note Created Successfully count - ${notes.upsertedCount}"
+            ),
+            HttpStatusCode.OK
+        )
     }
 }
