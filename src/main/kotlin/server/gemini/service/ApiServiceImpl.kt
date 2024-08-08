@@ -25,11 +25,11 @@ import server.gemini.utils.toCombinedString
 import java.util.*
 
 class ApiServiceImpl(private val client: HttpClient) : ApiService {
-    private val apiKey = System.getenv("apiKey") ?: throw ApiKeyNotFoundException(
+    private val apiKey = System.getenv("API_KEY") ?: throw ApiKeyNotFoundException(
         message = "Please Enter an ApiKey",
         errorCode = 400
     )
-    private val projectId = System.getenv("projectID") ?: throw ApiKeyNotFoundException(
+    private val projectId = System.getenv("PROJECT_ID") ?: throw ApiKeyNotFoundException(
         message = "Please Enter an ProjectId",
         errorCode = 400
     )
@@ -288,7 +288,8 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
             val vector = createNotes.createVectors(
                 listOf(
                     Paragraph(
-                        text = searchRequest.content ?: ""
+                        text = searchRequest.content ?: "",
+                        namespace = searchRequest.namespace ?: ""
                     )
                 )
             )

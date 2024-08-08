@@ -23,5 +23,7 @@ data class CreateNoteRequest(
     @SerialName("title")
     val title: String? = null,
     @SerialName("uId")
-    val uId: String? = null
+    val uId: String? = null,
+    @SerialName("namespace")
+    val namespace: String? = null
 )

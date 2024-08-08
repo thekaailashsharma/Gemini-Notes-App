@@ -1,6 +1,6 @@
 package server.gemini.utils
 
-data class Paragraph(val text: String)
+data class Paragraph(val text: String, val namespace: String = "paragraph")
 
 fun String.splitIntoParagraphs(): List<Paragraph> {
     val lines = this.lines()

@@ -68,7 +68,7 @@ class CreateNotes(private val client: HttpClient) {
                                 paragraph.text
                             ),
                             values = vectors,
-                            namespace = "paragraph"
+                            namespace = paragraph.namespace
                         )
                     )
                 } else {
