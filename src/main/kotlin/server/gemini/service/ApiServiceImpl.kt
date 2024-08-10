@@ -15,6 +15,7 @@ import server.gemini.models.addFirestore.AddFireStoreRequest
 import server.gemini.models.addFirestore.FireStoreResponse
 import server.gemini.models.createNote.CreateNoteRequest
 import server.gemini.models.createNote.addNoteToFirebase.AddNoteFireBaseResponse
+import server.gemini.models.createNote.addNoteToFirebase.GetNotesResponse
 import server.gemini.models.queryVectors.QueryVectorsRequest
 import server.gemini.models.searchNotes.SearchNotesResponse
 import server.gemini.models.searchNotes.SearchRequest
@@ -354,6 +355,59 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         }
     }
 
+    override suspend fun getUserNotes(idToken: String, userId: String): Pair<List<AddNoteFireBaseResponse?>?, HttpStatusCode> {
+        try {
+            val addFireStoreUrl = "https://firestore.googleapis.com/v1/projects/$projectId/" +
+                    "databases/(default)/documents/userNotes"
+            val c = client.get {
+                url(addFireStoreUrl)
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Authorization", "Bearer $idToken")
+                    append("Accept", "*/*")
+                    append("Content-Type", "application/json")
+                }
+            }
+            println("Response is ${c}")
+            return if (c.status.isSuccess()) {
+                println("Went Insidessss")
+                val response = c.body<GetNotesResponse>()
+                val userResponse = response.documents?.filter {
+                    it?.fields?.uId?.stringValue == userId
+                }
+                Pair(userResponse, c.status)
+            } else {
+                println("Went Insides ${c.body<SignUpFirebaseError>()}")
+                val error = c.body<SignUpFirebaseError>()
+                Pair(
+                    listOf(
+                        AddNoteFireBaseResponse(
+                            error = SignUpFirebaseError(
+                                error = Error(
+                                    message = error.error?.message
+                                )
+                            )
+                        )
+                    ),
+                    c.status
+                )
+            }
+        } catch (e: Exception) {
+            return Pair(
+                listOf(
+                    AddNoteFireBaseResponse(
+                        error = SignUpFirebaseError(
+                            error = Error(
+                                message = "Something Went Wrong"
+                            )
+                        )
+                    )
+                ),
+                HttpStatusCode.ServiceUnavailable
+            )
+        }
+    }
+
     private suspend fun addNotesToFirebase(
         request: CreateNoteRequest,
         vectors: List<Vector?>,
@@ -361,7 +415,7 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
     ) {
         try {
             val addFireStoreUrl = "https://firestore.googleapis.com/v1/projects/$projectId/" +
-                    "databases/(default)/documents/userNotes/${request.uId}"
+                    "databases/(default)/documents/userNotes/${UUID.randomUUID()}"
             val c = client.patch {
                 url(addFireStoreUrl)
                 setBody(

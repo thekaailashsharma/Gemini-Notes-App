@@ -18,3 +18,9 @@ data class AddNoteFireBaseResponse(
     @SerialName("error")
     val error: SignUpFirebaseError? = null
 )
+
+@Serializable
+data class GetNotesResponse(
+    @SerialName("documents")
+    val documents: List<AddNoteFireBaseResponse?>? = listOf(),
+)

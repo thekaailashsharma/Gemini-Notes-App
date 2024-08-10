@@ -11,8 +11,11 @@ import server.gemini.models.UserRegistrationRequest
 import server.gemini.models.UserRegistrationResponse
 import server.gemini.models.addFirestore.AddFireStoreRequest
 import server.gemini.models.createNote.CreateNoteRequest
+import server.gemini.models.createNote.addNoteToFirebase.AddNoteFireBaseResponse
+import server.gemini.models.createNote.addNoteToFirebase.GetNotesResponse
 import server.gemini.models.searchNotes.SearchNotesResponse
 import server.gemini.models.searchNotes.SearchRequest
+import server.gemini.models.searchNotes.addSearchToFirebase.UserId
 import server.gemini.models.signInResponse.SignInFirebaseResponse
 
 interface ApiService {
@@ -35,5 +38,7 @@ interface ApiService {
     suspend fun createNote(request: CreateNoteRequest, idToken: String): Pair<UserRegistrationResponse, HttpStatusCode>
 
     suspend fun searchNotes(searchRequest: SearchRequest, idToken: String): Pair<SearchNotesResponse, HttpStatusCode>
+
+    suspend fun getUserNotes(idToken: String, userId: String): Pair<List<AddNoteFireBaseResponse?>?, HttpStatusCode>
 
 }
