@@ -17,8 +17,9 @@ fun Routing.createNote() {
     authenticate("Authorization") {
         post("/createNote") {
             val request = call.receive<CreateNoteRequest>()
+            val principal = call.principal<UserIdPrincipal>()
             println("Note is $request")
-            val response = service.createNote(request)
+            val response = service.createNote(request, idToken = principal?.name ?: "")
             if (response.second == HttpStatusCode.OK) {
                 call.respond(response.first)
             } else {

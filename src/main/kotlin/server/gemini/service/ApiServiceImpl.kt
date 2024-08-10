@@ -5,23 +5,27 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.headers
 import io.ktor.http.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import server.gemini.models.UserLoginRequest
 import server.gemini.models.UserRegistrationRequest
 import server.gemini.models.UserRegistrationResponse
 import server.gemini.models.addFirestore.AddFireStoreRequest
 import server.gemini.models.addFirestore.FireStoreResponse
 import server.gemini.models.createNote.CreateNoteRequest
+import server.gemini.models.createNote.addNoteToFirebase.AddNoteFireBaseResponse
 import server.gemini.models.queryVectors.QueryVectorsRequest
 import server.gemini.models.searchNotes.SearchNotesResponse
 import server.gemini.models.searchNotes.SearchRequest
+import server.gemini.models.searchNotes.addSearchToFirebase.SearchFireStoreResponse
+import server.gemini.models.searchNotes.error.FireBaseError
 import server.gemini.models.signInResponse.SignInFirebaseResponse
 import server.gemini.models.signUpFirebase.*
 import server.gemini.models.upsert.Metadata
 import server.gemini.models.upsert.UpsertVectorsRequest
 import server.gemini.models.upsert.Vector
-import server.gemini.utils.ApiKeyNotFoundException
-import server.gemini.utils.Paragraph
-import server.gemini.utils.toCombinedString
+import server.gemini.utils.*
 import java.util.*
 
 class ApiServiceImpl(private val client: HttpClient) : ApiService {
@@ -34,7 +38,7 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         errorCode = 400
     )
 
-    val createNotes = CreateNotes(client)
+    private val createNotes = CreateNotes(client)
 
     override suspend fun ifEmailExists(email: String): Pair<Boolean, HttpStatusCode> {
         TODO("Not yet implemented")
@@ -263,7 +267,10 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         }
     }
 
-    override suspend fun createNote(request: CreateNoteRequest): Pair<UserRegistrationResponse, HttpStatusCode> {
+    override suspend fun createNote(
+        request: CreateNoteRequest,
+        idToken: String
+    ): Pair<UserRegistrationResponse, HttpStatusCode> {
         val paragraphs = createNotes.createParagraphs(request.content ?: "")
         val vectors = createNotes.createVectors(paragraphs)
         val notes = createNotes.upsertVectors(
@@ -273,6 +280,9 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
                 )
             }
         )
+        CoroutineScope(Dispatchers.IO).launch {
+            addNotesToFirebase(request, vectors, idToken)
+        }
         println("notes is $notes")
         return Pair(
             UserRegistrationResponse(
@@ -283,7 +293,10 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         )
     }
 
-    override suspend fun searchNotes(searchRequest: SearchRequest): Pair<SearchNotesResponse, HttpStatusCode> {
+    override suspend fun searchNotes(
+        searchRequest: SearchRequest,
+        idToken: String
+    ): Pair<SearchNotesResponse, HttpStatusCode> {
         try {
             val vector = createNotes.createVectors(
                 listOf(
@@ -314,6 +327,9 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
                 question = searchRequest.content ?: "",
                 content = content
             )
+            CoroutineScope(Dispatchers.IO).launch {
+                addAIChatToFirebase(askGemini, idToken = idToken, userId = searchRequest.namespace ?: "")
+            }
             if (askGemini.response != null) {
                 return Pair(
                     askGemini,
@@ -337,4 +353,146 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
             )
         }
     }
+
+    private suspend fun addNotesToFirebase(
+        request: CreateNoteRequest,
+        vectors: List<Vector?>,
+        idToken: String
+    ) {
+        try {
+            val addFireStoreUrl = "https://firestore.googleapis.com/v1/projects/$projectId/" +
+                    "databases/(default)/documents/userNotes/${request.uId}"
+            val c = client.patch {
+                url(addFireStoreUrl)
+                setBody(
+                    request.toAddNoteFirebaseRequest(vectors)
+                )
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Authorization", "Bearer $idToken")
+                    append("Accept", "*/*")
+                    append("Content-Type", "application/json")
+                }
+            }
+            println("Response is ${c}")
+            if (c.status.isSuccess()) {
+                println("Went Insidessss")
+                Pair(c.body<AddNoteFireBaseResponse>(), c.status)
+            } else {
+                println("Went Insides ${c.body<SignUpFirebaseError>()}")
+                val error = c.body<SignUpFirebaseError>()
+                Pair(
+                    AddNoteFireBaseResponse(
+                        error = SignUpFirebaseError(
+                            error = Error(
+                                message = error.error?.message
+                            )
+                        )
+                    ),
+                    c.status
+                )
+            }
+        } catch (e: Exception) {
+            Pair(
+                AddNoteFireBaseResponse(
+                    error = SignUpFirebaseError(
+                        error = Error(
+                            message = "Something Went Wrong"
+                        )
+                    )
+                ),
+                HttpStatusCode.ServiceUnavailable
+            )
+        }
+    }
+
+    private suspend fun addAIChatToFirebase(
+        request: SearchNotesResponse,
+        idToken: String,
+        userId: String
+    ) {
+        try {
+            val addFireStoreUrl = "https://firestore.googleapis.com/v1/projects/$projectId/" +
+                    "databases/(default)/documents/AIChat/${userId}"
+            val listOfResponses = client.get {
+                url(addFireStoreUrl)
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Authorization", "Bearer $idToken")
+                    append("Accept", "*/*")
+                    append("Content-Type", "application/json")
+                }
+            }.body<SearchFireStoreResponse>()
+            val c = client.patch {
+                url(addFireStoreUrl)
+                setBody(
+                    listOfResponses.appendSearchNotesResponse(request)
+                )
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                headers {
+                    append("Authorization", "Bearer $idToken")
+                    append("Accept", "*/*")
+                    append("Content-Type", "application/json")
+                }
+            }
+            println("Response is ${c}")
+            if (c.status.isSuccess()) {
+                println("Went Insidessss")
+                Pair(c.body<SearchFireStoreResponse>(), c.status)
+            } else if (c.status == HttpStatusCode.BadRequest) {
+                println("Went Insides ${c.body<SignUpFirebaseError>()}")
+                val error = c.body<FireBaseError>()
+                println("Went Insides1 ${c.body<SignUpFirebaseError>()}")
+                val c = client.patch {
+                    url(addFireStoreUrl)
+                    setBody(
+                        request.toSearchNotesFirebaseRequest()
+                    )
+                    header(HttpHeaders.ContentType, ContentType.Application.Json)
+                    headers {
+                        append("Authorization", "Bearer $idToken")
+                        append("Accept", "*/*")
+                        append("Content-Type", "application/json")
+                    }
+                }
+
+
+                Pair(
+                    SearchFireStoreResponse(
+                        error = SignUpFirebaseError(
+                            error = Error(
+                                message = error.error?.message
+                            )
+                        )
+                    ),
+                    c.status
+                )
+            } else {
+                println("Went Insides ${c.body<SignUpFirebaseError>()}")
+                val error = c.body<SignUpFirebaseError>()
+                Pair(
+                    SearchFireStoreResponse(
+                        error = SignUpFirebaseError(
+                            error = Error(
+                                message = error.error?.message
+                            )
+                        )
+                    ),
+                    c.status
+                )
+            }
+        } catch (e: Exception) {
+            Pair(
+                SearchFireStoreResponse(
+                    error = SignUpFirebaseError(
+                        error = Error(
+                            message = "Something Went Wrong"
+                        )
+                    )
+                ),
+                HttpStatusCode.ServiceUnavailable
+            )
+        }
+    }
+
 }

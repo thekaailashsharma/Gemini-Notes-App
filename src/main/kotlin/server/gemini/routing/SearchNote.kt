@@ -18,8 +18,9 @@ fun Routing.searchNote() {
     authenticate("Authorization") {
         post("/searchNote") {
             val request = call.receive<SearchRequest>()
+            val principal = call.principal<UserIdPrincipal>()
             println("Note is $request")
-            val response = service.searchNotes(request)
+            val response = service.searchNotes(request, idToken = principal?.name ?: "")
             if (response.second == HttpStatusCode.OK) {
                 call.respond(response.first)
             } else {

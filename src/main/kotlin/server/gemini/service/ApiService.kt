@@ -32,8 +32,8 @@ interface ApiService {
 
     suspend fun signInFirebase(request: UserLoginRequest): Pair<SignInFirebaseResponse, HttpStatusCode>
 
-    suspend fun createNote(request: CreateNoteRequest): Pair<UserRegistrationResponse, HttpStatusCode>
+    suspend fun createNote(request: CreateNoteRequest, idToken: String): Pair<UserRegistrationResponse, HttpStatusCode>
 
-    suspend fun searchNotes(searchRequest: SearchRequest): Pair<SearchNotesResponse, HttpStatusCode>
+    suspend fun searchNotes(searchRequest: SearchRequest, idToken: String): Pair<SearchNotesResponse, HttpStatusCode>
 
 }
