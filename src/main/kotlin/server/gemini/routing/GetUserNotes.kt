@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
 import server.gemini.models.createNote.addNoteToFirebase.GetNotesResponse
-import server.gemini.models.signUpFirebase.SignUpFirebaseError
 import server.gemini.service.ApiServiceImpl
 
 fun Routing.getUserNotes() {
