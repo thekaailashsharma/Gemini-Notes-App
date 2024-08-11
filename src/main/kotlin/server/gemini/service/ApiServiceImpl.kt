@@ -500,7 +500,7 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
                 val c = client.patch {
                     url(addFireStoreUrl)
                     setBody(
-                        request.toSearchNotesFirebaseRequest()
+                        request.toSearchNotesFirebaseRequest(userId = userId)
                     )
                     header(HttpHeaders.ContentType, ContentType.Application.Json)
                     headers {

@@ -3,7 +3,7 @@ package server.gemini.utils
 import server.gemini.models.searchNotes.SearchNotesResponse
 import server.gemini.models.searchNotes.addSearchToFirebase.*
 
-fun SearchNotesResponse.toSearchNotesFirebaseRequest(): SearchNoteRequest {
+fun SearchNotesResponse.toSearchNotesFirebaseRequest(userId: String): SearchNoteRequest {
     return SearchNoteRequest(
         fields = Fields(
             conversations = Conversations(
@@ -15,18 +15,19 @@ fun SearchNotesResponse.toSearchNotesFirebaseRequest(): SearchNoteRequest {
                                     question = Question(stringValue = this.name),
                                     answer = this.response?.let { Answer(stringValue = it) },
                                     timestamp = Timestamp(System.currentTimeMillis())
-                                )
+                                ),
                             )
                         )
                     )
                 ),
-            )
+            ),
+            userId = UserId(stringValue = userId)
         )
     )
 }
 
 fun SearchFireStoreResponse.appendSearchNotesResponse(searchNotesResponse: SearchNotesResponse): SearchFireStoreResponse {
-    val searchNoteRequest = searchNotesResponse.toSearchNotesFirebaseRequest()
+    val searchNoteRequest = searchNotesResponse.toSearchNotesFirebaseRequest(userId = this.fields?.userId?.stringValue.orEmpty())
 
     val existingValues = this.fields?.conversations?.arrayValue?.values.orEmpty()
 
@@ -42,7 +43,9 @@ fun SearchFireStoreResponse.appendSearchNotesResponse(searchNotesResponse: Searc
                 arrayValue = ArrayValue(
                     values = updatedValues
                 )
-            )
-        )
+            ),
+            userId = this.fields.userId
+        ),
+
     )
 }
