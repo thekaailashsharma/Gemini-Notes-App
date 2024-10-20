@@ -12,9 +12,10 @@ import server.gemini.plugins.configureRouting
 import server.gemini.plugins.configureSerialization
 
 fun main(args: Array<String>) {
+    val port = System.getenv("PORT")?.toInt() ?: 8080
     embeddedServer(
         Netty,
-        port = 8085,
+        port = port,
         host = "0.0.0.0",
         module = Application::module
     ).start(wait = true)

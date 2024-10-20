@@ -159,8 +159,7 @@ class CreateNotes(private val client: HttpClient) {
 
     suspend fun askGemini(question: String, content: String): SearchNotesResponse {
         try {
-            val askGeminiUrl = "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:" +
-                    "generateText?key=AIzaSyA2AfZyW1X2QlkifMJMGRv2Mqc78RJpt30"
+            val askGeminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBZtDY0o0Q5W8VuDFlwhjzHDwfCOmaQbDU"
 
             val createPrompt = "This is the question on a users note that they want to ask" +
                     "The question is: $question. The content of the note is: $content. Now answer the question." +
@@ -170,8 +169,12 @@ class CreateNotes(private val client: HttpClient) {
                 url(askGeminiUrl)
                 setBody(
                     AskGeminiRequest(
-                        prompt = Prompt(
-                            text = createPrompt
+                        contents = listOf(
+                            server.gemini.models.askGemini.Content(
+                                parts = listOf(
+                                    server.gemini.models.askGemini.Part(createPrompt)
+                                )
+                            )
                         )
                     )
                 )
@@ -184,7 +187,7 @@ class CreateNotes(private val client: HttpClient) {
             println("AskGeminiResponse is ${c}")
             if (c.status.isSuccess()) {
                 println("AskGeminiResponse is inside")
-                val response = c.body<AskGeminiResponse>().candidates?.get(0)?.output
+                val response = c.body<AskGeminiResponse>().candidates?.get(0)?.content?.parts?.get(0)?.text
                 return SearchNotesResponse(
                     response = response,
                     content = content,

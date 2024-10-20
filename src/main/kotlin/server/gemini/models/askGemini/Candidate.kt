@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Candidate(
-    @SerialName("output")
-    val output: String? = null,
-    @SerialName("safetyRatings")
-    val safetyRatings: List<SafetyRating?>? = null
+    val content: Content? = null,
+    val finishReason: String? = null,
+    val index: Long? = null,
+    val safetyRatings: List<SafetyRating>? = null
 )
